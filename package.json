@@ -1,7 +1,7 @@
 {
   "name": "phonebook-backend",
   "version": "0.0.1",
-  "description": "Phonebook API",
+  "description": "Phonebook API and Frontend",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
