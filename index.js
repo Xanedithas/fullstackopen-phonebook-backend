@@ -4,6 +4,7 @@ const app = express()
 const morgan = require("morgan")
 
 app.use(cors())
+app.use(express.static('build'))
 app.use(express.json())
 
 const requestLogger = (req, res, next) => {
@@ -38,9 +39,9 @@ let persons = [
 	},
 ]
 
-app.get("/", morgan('tiny'), (req, res) => {
+/*app.get("/", morgan('tiny'), (req, res) => {
 	res.send("<h1>Hello World!</h1>")
-})
+})*/
 
 app.get("/info", (req, res) => {
 	res.send(`
