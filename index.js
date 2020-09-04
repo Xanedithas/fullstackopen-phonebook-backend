@@ -3,6 +3,10 @@ const cors = require("cors")
 const app = express()
 const morgan = require("morgan")
 
+const mongoose = require('mongoose')
+const url = process.env.MONGODB_URI
+const Contact = require("./models/contact")
+
 app.use(cors())
 app.use(express.static('build'))
 app.use(express.json())
@@ -16,59 +20,86 @@ const requestLogger = (req, res, next) => {
 }
 //app.use(requestLogger)
 
-let persons = [
-	{
-		name: "Ada Lovelace",
-		number: "39-44-5323523",
-		id: 2,
-	},
-	{
-		name: "Dan Abramov",
-		number: "12-43-234345",
-		id: 3,
-	},
-	{
-		name: "Mary Poppendieck",
-		number: "39-23-6423122",
-		id: 4,
-	},
-	{
-		name: "Edsger Dijkstra",
-		number: "09-87654321",
-		id: 5,
-	},
-]
+console.log('connecting to', url)
+
+mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(result => {
+    console.log('connected to MongoDB')
+  })
+  .catch((error) => {
+    console.log('error connecting to MongoDB:', error.message)
+  })
 
 /*app.get("/", morgan('tiny'), (req, res) => {
 	res.send("<h1>Hello World!</h1>")
 })*/
 
+/*console.log("Phonebook:")
+result.forEach((contact) => {
+	console.log(`${contact.name} ${contact.number}`)
+})*/
+
+app.get("/test", (req, res) => {
+	Contact.find({}).then((result) => {
+		mongoose.connection.close()
+		res.send(JSON.stringify(result))
+	})
+    .catch(error => {
+		mongoose.connection.close()
+		console.log(error)
+		response.status(500).end()
+    })
+})
+
 app.get("/info", (req, res) => {
-	res.send(`
-        <div>
-			<p>There are currently ${persons.length}
-			entries in the phonebook.</p>
-            <p>${new Date()}</p>
-        </div>
-    `)
+	Contact.find({}).then((result) => {
+		mongoose.connection.close()
+		res.send(`
+			<div>
+				<p>There are currently ${result.length}
+				entries in the phonebook.</p>
+				<p>${new Date()}</p>
+			</div>
+		`)
+	})
+    .catch(error => {
+		mongoose.connection.close()
+		console.log(error)
+		response.status(500).end()
+    })
 })
 
 app.get("/api/persons", morgan('tiny'), (req, res) => {
-	res.json(persons)
+	Contact.find({}).then((result) => {
+		mongoose.connection.close()
+		res.json(result)
+	})
+    .catch(error => {
+		mongoose.connection.close()
+		console.log(error)
+		response.status(500).end()
+    })
 })
 
 app.get("/api/persons/:id", morgan('tiny'), (req, res) => {
 	if (req.params.id) {
-		const id = Number(req.params.id)
-		const person = persons.find((p) => p.id === id)
-		if (person) {
-			res.json(person)
-		} else {
-			return res.status(404).json({
-				error: "person not found",
-			})
-		}
+		Contact.find({ _id: req.params.id }).then((result) => {
+			mongoose.connection.close()
+			if (result) {
+				res.json(result)
+			} else {
+				return res.status(404).json({
+					error: "person not found",
+				})
+			}
+		})
+		.catch(error => {
+			mongoose.connection.close()
+			console.log(error)
+			response.status(500).end()
+		})
 	} else {
+		mongoose.connection.close()
 		return res.status(400).json({
 			error: "id missing",
 		})
@@ -91,59 +122,83 @@ const morganJson = () => {
 	})
 }
 
-/*
-// I used this, but I have to use Math.random().
-const lastId = () => {
-    // Array must be in order for this to work.
-    if (persons.length) {
-        return persons[persons.length-1].id
-    } else {
-        return 0
-    }
-}
-// Could also use 'node-uuid'
-*/
-
-const random = () => {
-	return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
-}
-
 app.post("/api/persons", morganJson(), (req, res) => {
 	if (req.body) {
 		const { name, number } = req.body
 		if (name && number) {
 			// Add faulty data check?
-			if (persons.find((p) => p.name === name)) {
-				return res.status(409).json({
-					error: "name must be unique",
-				})
-			}
-			const newPerson = {
-				name,
-				number,
-				id: random(),
-			}
-			//lastId()+1
-			persons = persons.concat(newPerson)
-			res.json(newPerson)
+			Contact.find({ name: name }).then((result) => {
+				if (result) {
+					if (result[0].name === name) {
+						mongoose.connection.close()
+						return res.status(409).json({
+							error: "name must be unique",
+						})
+					}
+				}
+			})
+			.catch(error => {
+				mongoose.connection.close()
+				console.log(error)
+				response.status(500).end()
+			})
+			const newContact = Contact({
+				name: name,
+				number: number
+			})
+			newContact.save().then((result) => {
+				console.log(`Added ${contact.name} ${contact.number} to phonebook`)
+				mongoose.connection.close()
+			})
+			res.json(newContact)
 		} else {
 			return res.status(400).json({
 				error: "name and number are required",
 			})
 		}
 	} else {
+		mongoose.connection.close()
 		return res.status(400).json({
 			error: "name and number are required",
 		})
 	}
+}, error => {
+	console.log(error)
 })
 
 app.delete("/api/persons/:id", morganJson(), (req, res) => {
 	if (req.params.id) {
-		const id = Number(req.params.id)
-		persons = persons.filter((p) => p.id !== id)
-		res.status(204).end()
+		Contact.find({ _id: req.params.id }).then((result) => {
+			if (result) {
+				if (result[0]._id == req.params.id) {
+					Contact.deleteOne({ _id: req.params.id }).then(() => {
+						res.status(204).end()
+						mongoose.connection.close()
+					}/*, error => {
+						console.log(error)
+						res.status(500).end()
+						mongoose.connection.close()
+					}*/)
+					.catch(error => {
+						mongoose.connection.close()
+						console.log(error)
+						response.status(500).end()
+					})
+				} else {
+					mongoose.connection.close()
+					return res.status(404).json({
+						error: "person not found",
+					})
+				}
+			}
+		})
+		.catch(error => {
+			mongoose.connection.close()
+			console.log(error)
+			response.status(500).end()
+		})
 	} else {
+		mongoose.connection.close()
 		return res.status(400).json({
 			error: "id missing",
 		})
@@ -151,6 +206,7 @@ app.delete("/api/persons/:id", morganJson(), (req, res) => {
 })
 
 const unknownEndpoint = (req, res) => {
+	mongoose.connection.close()
 	res.status(404).send({ error: "unknown endpoint" })
 }
 app.use(unknownEndpoint)
