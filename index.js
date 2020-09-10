@@ -3,10 +3,6 @@ const cors = require("cors")
 const app = express()
 const morgan = require("morgan")
 
-const mongoose = require('mongoose')
-const url = process.env.MONGODB_URI
-const Contact = require("./models/contact")
-
 app.use(cors())
 app.use(express.static('build'))
 app.use(express.json())
@@ -20,15 +16,7 @@ const requestLogger = (req, res, next) => {
 }
 //app.use(requestLogger)
 
-console.log('connecting to', url)
-
-mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(result => {
-    console.log('connected to MongoDB')
-  })
-  .catch((error) => {
-    console.log('error connecting to MongoDB:', error.message)
-  })
+const Contact = require("./models/contact")
 
 /*app.get("/", morgan('tiny'), (req, res) => {
 	res.send("<h1>Hello World!</h1>")
@@ -41,19 +29,16 @@ result.forEach((contact) => {
 
 app.get("/test", (req, res) => {
 	Contact.find({}).then((result) => {
-		mongoose.connection.close()
 		res.send(JSON.stringify(result))
 	})
-    .catch(error => {
-		mongoose.connection.close()
-		console.log(error)
-		response.status(500).end()
-    })
+		.catch(error => {
+			console.log(error)
+			response.status(500).end()
+		})
 })
 
 app.get("/info", (req, res) => {
 	Contact.find({}).then((result) => {
-		mongoose.connection.close()
 		res.send(`
 			<div>
 				<p>There are currently ${result.length}
@@ -62,29 +47,26 @@ app.get("/info", (req, res) => {
 			</div>
 		`)
 	})
-    .catch(error => {
-		mongoose.connection.close()
-		console.log(error)
-		response.status(500).end()
-    })
+		.catch(error => {
+			console.log(error)
+			response.status(500).end()
+		})
 })
 
 app.get("/api/persons", morgan('tiny'), (req, res) => {
 	Contact.find({}).then((result) => {
-		mongoose.connection.close()
 		res.json(result)
 	})
-    .catch(error => {
-		mongoose.connection.close()
-		console.log(error)
-		response.status(500).end()
-    })
+		.catch(error => {
+			console.log(error)
+			response.status(500).end()
+		})
 })
 
 app.get("/api/persons/:id", morgan('tiny'), (req, res) => {
 	if (req.params.id) {
 		Contact.find({ _id: req.params.id }).then((result) => {
-			mongoose.connection.close()
+
 			if (result) {
 				res.json(result)
 			} else {
@@ -93,13 +75,11 @@ app.get("/api/persons/:id", morgan('tiny'), (req, res) => {
 				})
 			}
 		})
-		.catch(error => {
-			mongoose.connection.close()
-			console.log(error)
-			response.status(500).end()
-		})
+			.catch(error => {
+				console.log(error)
+				response.status(500).end()
+			})
 	} else {
-		mongoose.connection.close()
 		return res.status(400).json({
 			error: "id missing",
 		})
@@ -130,25 +110,22 @@ app.post("/api/persons", morganJson(), (req, res) => {
 			Contact.find({ name: name }).then((result) => {
 				if (result) {
 					if (result[0].name === name) {
-						mongoose.connection.close()
 						return res.status(409).json({
 							error: "name must be unique",
 						})
 					}
 				}
 			})
-			.catch(error => {
-				mongoose.connection.close()
-				console.log(error)
-				response.status(500).end()
-			})
+				.catch(error => {
+					console.log(error)
+					response.status(500).end()
+				})
 			const newContact = Contact({
 				name: name,
 				number: number
 			})
 			newContact.save().then((result) => {
 				console.log(`Added ${contact.name} ${contact.number} to phonebook`)
-				mongoose.connection.close()
 			})
 			res.json(newContact)
 		} else {
@@ -157,7 +134,6 @@ app.post("/api/persons", morganJson(), (req, res) => {
 			})
 		}
 	} else {
-		mongoose.connection.close()
 		return res.status(400).json({
 			error: "name and number are required",
 		})
@@ -173,32 +149,30 @@ app.delete("/api/persons/:id", morganJson(), (req, res) => {
 				if (result[0]._id == req.params.id) {
 					Contact.deleteOne({ _id: req.params.id }).then(() => {
 						res.status(204).end()
-						mongoose.connection.close()
+
 					}/*, error => {
 						console.log(error)
 						res.status(500).end()
-						mongoose.connection.close()
+						
 					}*/)
-					.catch(error => {
-						mongoose.connection.close()
-						console.log(error)
-						response.status(500).end()
-					})
+						.catch(error => {
+
+							console.log(error)
+							response.status(500).end()
+						})
 				} else {
-					mongoose.connection.close()
+
 					return res.status(404).json({
 						error: "person not found",
 					})
 				}
 			}
 		})
-		.catch(error => {
-			mongoose.connection.close()
-			console.log(error)
-			response.status(500).end()
-		})
+			.catch(error => {
+				console.log(error)
+				response.status(500).end()
+			})
 	} else {
-		mongoose.connection.close()
 		return res.status(400).json({
 			error: "id missing",
 		})
@@ -206,7 +180,6 @@ app.delete("/api/persons/:id", morganJson(), (req, res) => {
 })
 
 const unknownEndpoint = (req, res) => {
-	mongoose.connection.close()
 	res.status(404).send({ error: "unknown endpoint" })
 }
 app.use(unknownEndpoint)
