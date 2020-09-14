@@ -4,8 +4,8 @@
   "description": "Phonebook API and Frontend",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node index.js --harmony",
+    "dev": "nodemon index.js --harmony",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:ui": "rm -rf build && cd ../fullstackopen/part2/phonebook && npm run build --prod && cp -r build ../../../phonebook-backend",
     "deploy": "git push heroku master",
@@ -22,6 +22,7 @@
     "morgan": "^1.10.0"
   },
   "devDependencies": {
+    "dotenv": "^8.2.0",
     "nodemon": "^2.0.4"
   }
 }

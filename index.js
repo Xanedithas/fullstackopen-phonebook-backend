@@ -3,6 +3,8 @@ const cors = require("cors")
 const app = express()
 const morgan = require("morgan")
 
+require('dotenv').config()
+
 app.use(cors())
 app.use(express.static('build'))
 app.use(express.json())
@@ -18,72 +20,47 @@ const requestLogger = (req, res, next) => {
 
 const Contact = require("./models/contact")
 
-/*app.get("/", morgan('tiny'), (req, res) => {
-	res.send("<h1>Hello World!</h1>")
+/*app.get("*", (req, res, next) => {
+	throw new Error("test")
 })*/
 
-/*console.log("Phonebook:")
-result.forEach((contact) => {
-	console.log(`${contact.name} ${contact.number}`)
-})*/
-
-app.get("/test", (req, res) => {
-	Contact.find({}).then((result) => {
-		res.send(JSON.stringify(result))
-	})
-		.catch(error => {
-			console.log(error)
-			response.status(500).end()
+app.get("/info", (req, res, next) => {
+	Contact.find({})
+		.then((result) => {
+			res.send(`
+				<div>
+					<p>There are currently ${result?.length}
+					entries in the phonebook.</p>
+					<p>${new Date()}</p>
+				</div>
+			`)
 		})
+		.catch(next)
 })
 
-app.get("/info", (req, res) => {
-	Contact.find({}).then((result) => {
-		res.send(`
-			<div>
-				<p>There are currently ${result.length}
-				entries in the phonebook.</p>
-				<p>${new Date()}</p>
-			</div>
-		`)
-	})
-		.catch(error => {
-			console.log(error)
-			response.status(500).end()
-		})
+app.get("/api/persons", morgan('tiny'), (req, res, next) => {
+	Contact.find({})
+		.then(result => res.json(result))
+		.catch(next)
 })
 
-app.get("/api/persons", morgan('tiny'), (req, res) => {
-	Contact.find({}).then((result) => {
-		res.json(result)
-	})
-		.catch(error => {
-			console.log(error)
-			response.status(500).end()
-		})
-})
-
-app.get("/api/persons/:id", morgan('tiny'), (req, res) => {
-	if (req.params.id) {
-		Contact.find({ _id: req.params.id }).then((result) => {
-
+app.get("/api/persons/:id", morgan('tiny'), (req, res, next) => {
+	const { id } = req.params
+	if (!id) {
+		return res.status(400).json({ error: "id is required" })
+	}
+	Contact.findById(id)
+		.then((result) => {
 			if (result) {
 				res.json(result)
 			} else {
-				return res.status(404).json({
-					error: "person not found",
-				})
+				return res.status(404).json({ error: "contact not found" })
+				/*let x = Error("contact not found")
+				x.code = 404
+				next(x)*/
 			}
 		})
-			.catch(error => {
-				console.log(error)
-				response.status(500).end()
-			})
-	} else {
-		return res.status(400).json({
-			error: "id missing",
-		})
-	}
+		.catch(next)
 })
 
 const morganJson = () => {
@@ -102,87 +79,96 @@ const morganJson = () => {
 	})
 }
 
-app.post("/api/persons", morganJson(), (req, res) => {
-	if (req.body) {
-		const { name, number } = req.body
-		if (name && number) {
-			// Add faulty data check?
-			Contact.find({ name: name }).then((result) => {
-				if (result) {
-					if (result[0].name === name) {
-						return res.status(409).json({
-							error: "name must be unique",
-						})
-					}
-				}
-			})
-				.catch(error => {
-					console.log(error)
-					response.status(500).end()
-				})
-			const newContact = Contact({
-				name: name,
-				number: number
-			})
-			newContact.save().then((result) => {
-				console.log(`Added ${contact.name} ${contact.number} to phonebook`)
-			})
-			res.json(newContact)
-		} else {
-			return res.status(400).json({
-				error: "name and number are required",
-			})
-		}
-	} else {
+app.post("/api/persons", morganJson(), (req, res, next) => {
+	const { name, number } = req.body
+	if (!name || !number) {
 		return res.status(400).json({
 			error: "name and number are required",
 		})
 	}
-}, error => {
-	console.log(error)
-})
-
-app.delete("/api/persons/:id", morganJson(), (req, res) => {
-	if (req.params.id) {
-		Contact.find({ _id: req.params.id }).then((result) => {
-			if (result) {
-				if (result[0]._id == req.params.id) {
-					Contact.deleteOne({ _id: req.params.id }).then(() => {
-						res.status(204).end()
-
-					}/*, error => {
-						console.log(error)
-						res.status(500).end()
-						
-					}*/)
-						.catch(error => {
-
-							console.log(error)
-							response.status(500).end()
-						})
-				} else {
-
-					return res.status(404).json({
-						error: "person not found",
+	// Add data validation?
+	// 
+	/*Contact.find({ name })
+		.then((result) => {
+			if (result?.length) {
+				if (result[0].name === name) {
+					return res.status(409).json({
+						error: "name must be unique",
 					})
 				}
 			}
 		})
-			.catch(error => {
-				console.log(error)
-				response.status(500).end()
-			})
-	} else {
-		return res.status(400).json({
-			error: "id missing",
+		.catch(next)*/
+	const contact = Contact({
+		name,
+		number
+	})
+	contact.save()
+		.then((result) => {
+			console.log(`Added ${contact.name} ${contact.number} to phonebook`)
+			res.json(contact)
 		})
-	}
+		.catch(next)
 })
 
-const unknownEndpoint = (req, res) => {
-	res.status(404).send({ error: "unknown endpoint" })
+app.put("/api/persons/:id", morganJson(), (req, res, next) => {
+	const { id } = req.params
+	const { name, number } = req.body
+	if (!id || !name || !number) {
+		return res.status(400).json({
+			error: "id, name, and number are required",
+		})
+	}
+	const contact = Contact({
+		_id: id,
+		name,
+		number
+	})
+	// { new: true }, updatedContact with modifications, instead of without by default (new instead of old).
+	Contact.findByIdAndUpdate(id, contact, { new: true })
+		.then(updatedContact => {
+			console.log(`Updated ${updatedContact.name} ${updatedContact.number} in phonebook`)
+			res.json(updatedContact)
+		})
+		.catch(next)
+})
+
+app.delete("/api/persons/:id", morganJson(), (req, res, next) => {
+	const { id } = req.params
+	if (!id) {
+		return res.status(400).json({ error: "id is required" })
+	}
+	Contact.findByIdAndRemove(id)
+		// argument may be used to return the removed data
+		.then((result) => {
+			if (result) {
+				res.status(204).end()
+			} else {
+				res.status(404).end()
+			}
+		})
+		.catch(next)
+})
+
+// Unhandled request
+app.use((req, res) => res.status(404).send({ error: "unknown endpoint" }))
+
+const errorHandler = (err, req, res, next) => {
+	console.error(err.message)
+
+	if (err.name === 'CastError') {
+		return res.status(400).send({ error: 'malformatted id' })
+	}
+	if (err.code) {
+		return res.status(err.code).send({ error: err.message || 'internal server error' })
+	}
+
+	next(err)
 }
-app.use(unknownEndpoint)
+app.use(errorHandler)
+
+// Uncaught errors
+app.use((err, req, res, next) => res.status(500).end())
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
