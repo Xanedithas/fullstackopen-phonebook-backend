@@ -27,9 +27,12 @@ const Contact = require("./models/contact")
 app.get("/info", (req, res, next) => {
 	Contact.find({})
 		.then((result) => {
+			if (!result) {
+				return res.status(204).json({ error: "no data found" })
+			}
 			res.send(`
 				<div>
-					<p>There are currently ${result?.length}
+					<p>There are currently ${result.length}
 					entries in the phonebook.</p>
 					<p>${new Date()}</p>
 				</div>
