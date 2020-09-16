@@ -10,7 +10,9 @@
     "build:ui": "rm -rf build && cd ../fullstackopen/part2/phonebook && npm run build --prod && cp -r build ../../../phonebook-backend",
     "deploy": "git push heroku master",
     "deploy:full": "npm run build:ui && git add . && git commit -m uibuild && npm run deploy",
-    "logs:prod": "heroku logs --tail"
+    "logs:prod": "heroku logs --tail",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "author": "",
   "license": "ISC",
@@ -19,10 +21,12 @@
     "express": "^4.17.1",
     "mongodb": "^3.6.1",
     "mongoose": "^5.10.2",
+    "mongoose-unique-validator": "^2.0.3",
     "morgan": "^1.10.0"
   },
   "devDependencies": {
     "dotenv": "^8.2.0",
+    "eslint": "^7.9.0",
     "nodemon": "^2.0.4"
   }
 }

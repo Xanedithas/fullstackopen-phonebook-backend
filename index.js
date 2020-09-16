@@ -7,16 +7,16 @@ const morgan = require("morgan")
 //require('dotenv').config()
 
 app.use(cors())
-app.use(express.static('build'))
+app.use(express.static("build"))
 app.use(express.json())
 
-const requestLogger = (req, res, next) => {
+/*const requestLogger = (req, res, next) => {
 	console.log("Method:", req.method)
 	console.log("Path:  ", req.path)
 	console.log("Body:  ", req.body)
 	console.log("---")
 	next()
-}
+}*/
 //app.use(requestLogger)
 
 const Contact = require("./models/contact")
@@ -27,7 +27,7 @@ const Contact = require("./models/contact")
 
 app.get("/info", (req, res, next) => {
 	Contact.find({})
-		.then((result) => {
+		.then(result => {
 			if (!result) {
 				return res.status(204).json({ error: "no data found" })
 			}
@@ -42,19 +42,19 @@ app.get("/info", (req, res, next) => {
 		.catch(next)
 })
 
-app.get("/api/persons", morgan('tiny'), (req, res, next) => {
+app.get("/api/persons", morgan("tiny"), (req, res, next) => {
 	Contact.find({})
 		.then(result => res.json(result))
 		.catch(next)
 })
 
-app.get("/api/persons/:id", morgan('tiny'), (req, res, next) => {
+app.get("/api/persons/:id", morgan("tiny"), (req, res, next) => {
 	const { id } = req.params
 	if (!id) {
 		return res.status(400).json({ error: "id is required" })
 	}
 	Contact.findById(id)
-		.then((result) => {
+		.then(result => {
 			if (result) {
 				res.json(result)
 			} else {
@@ -91,9 +91,9 @@ app.post("/api/persons", morganJson(), (req, res, next) => {
 		})
 	}
 	// Add data validation?
-	// 
+	//
 	/*Contact.find({ name })
-		.then((result) => {
+		.then(result => {
 			if (result?.length) {
 				if (result[0].name === name) {
 					return res.status(409).json({
@@ -108,9 +108,10 @@ app.post("/api/persons", morganJson(), (req, res, next) => {
 		number
 	})
 	contact.save()
-		.then((result) => {
+	//  .then(result => result.toJSON()) # Works without toJSON ?
+		.then(result => {
 			console.log(`Added ${contact.name} ${contact.number} to phonebook`)
-			res.json(contact)
+			res.json(result)
 		})
 		.catch(next)
 })
@@ -123,13 +124,13 @@ app.put("/api/persons/:id", morganJson(), (req, res, next) => {
 			error: "id, name, and number are required",
 		})
 	}
-	const contact = Contact({
-		_id: id,
+	const contact = {
 		name,
 		number
-	})
+	}
 	// { new: true }, updatedContact with modifications, instead of without by default (new instead of old).
-	Contact.findByIdAndUpdate(id, contact, { new: true })
+	// { runValidators: true }, run input validation on update, not active by default
+	Contact.findByIdAndUpdate(id, contact, { runValidators: true, new: true })
 		.then(updatedContact => {
 			console.log(`Updated ${updatedContact.name} ${updatedContact.number} in phonebook`)
 			res.json(updatedContact)
@@ -144,7 +145,7 @@ app.delete("/api/persons/:id", morganJson(), (req, res, next) => {
 	}
 	Contact.findByIdAndRemove(id)
 		// argument may be used to return the removed data
-		.then((result) => {
+		.then(result => {
 			if (result) {
 				res.status(204).end()
 			} else {
@@ -158,13 +159,19 @@ app.delete("/api/persons/:id", morganJson(), (req, res, next) => {
 app.use((req, res) => res.status(404).send({ error: "unknown endpoint" }))
 
 const errorHandler = (err, req, res, next) => {
+	//return res.json(err)
 	console.error(err.message)
 
-	if (err.name === 'CastError') {
-		return res.status(400).send({ error: 'malformatted id' })
+	if (err.name ==="ValidationError") {
+		//return res.status(400).send({ error: 'invalid data' })
+		return res.status(400).json(err)
+	}
+
+	if (err.name === "CastError") {
+		return res.status(400).send({ error: "malformatted id" })
 	}
 	if (err.code) {
-		return res.status(err.code).send({ error: err.message || 'internal server error' })
+		return res.status(err.code).send({ error: err.message || "internal server error" })
 	}
 
 	next(err)
@@ -172,7 +179,7 @@ const errorHandler = (err, req, res, next) => {
 app.use(errorHandler)
 
 // Uncaught errors
-app.use((err, req, res, next) => res.status(500).end())
+app.use((err, req, res) => res.status(500).end())
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
